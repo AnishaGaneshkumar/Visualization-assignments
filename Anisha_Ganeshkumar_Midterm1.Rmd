@@ -1,0 +1,187 @@
+---
+title: "Anisha_Ganeshkumar_Midterm1"
+author: "Anisha Ganeshkumar"
+date: "25/10/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+Loading the data.
+
+```{r}
+market<-read.csv("farmers_market_info.csv",sep=",", stringsAsFactors = FALSE, na.strings = "NA")
+```
+
+Problem 1:
+Treemap
+
+```{r}
+library(dplyr)
+df11 <- market
+library(stringr)
+df11$State <- str_to_upper(df11$State)
+library(magrittr)
+```
+
+```{r}
+dfnortheast <- df11 %>%
+  filter(df11$State %in% c("MAINE","NEW HAMPSHIRE","VERMONT","MASSACHUSETTS","RHODE ISLAND","CONNECTICUT","NEW YORK","NEW JERSEY","PENNSYLVANIA"))
+dfnortheast$Direction <- "NORTHEAST"
+dfmidwest <- df11 %>%
+  filter(df11$State %in% c("OHIO","MICHIGAN","INDIANA","WISCONSIN","ILLINOIS","MINNESOTA","IOWA","MISSOURI","NORTH DAKOTA","SOUTH DAKOTA","NEBRASKA","KANSAS"))
+dfmidwest$Direction <- "MIDWEST"
+dfsouth <- df11 %>%
+  filter(df11$State %in% c("DELAWARE","MARYLAND","VIRGINIA","WEST VIRGINIA","KENTUCKY","NORTH CAROLINA","SOUTH CAROLINA","TENNESSEE","GEORGIA","FLORIDA","ALABAMA","MISSISSIPPI","ARKANSAS","LOUISIANA","TEXAS","OKLAHOMA","DISTRICT OF COLUMBIA","VIRGIN ISLANDS","PUERTO RICO"))
+dfsouth$Direction <- "SOUTH"
+dfwest <- df11 %>%
+  filter(df11$State %in% c("MONTANA","IDAHO","WYOMING","COLORADO","NEW MEXICO","ARIZONA","UTAH","NEVADA","CALIFORNIA","OREGON","WASHINGTON","ALASKA","HAWAII"))
+dfwest$Direction <- "WEST"
+df12 <- rbind(dfnortheast,dfmidwest,dfsouth,dfwest)  
+df13 <- summarise(group_by(df12,Direction,State,County,city), count = n())
+library(treemap)
+library(RColorBrewer)
+treemap(df13,index = c("Direction","State"),vSize = "count", type = "index",title = "TREEMAP OF REGION-BASED DISTRIBUTION",fontsize.title = 12,fontcolor.labels = "black",force.print.labels = TRUE, palette= "Set1")
+```
+
+```{r}
+library(ggplot2)
+df14 <- summarise(group_by(df13,Direction), count_Direction = n())
+ggplot(df14,aes(x=reorder(factor(Direction),-count_Direction), y = count_Direction))+geom_bar(stat = "identity", fill = "steelblue")+labs(x= "Region", y = "Number of Farmers market", title = "COUNT OF MARKET IN EACH REGION")+geom_text(aes(label = count_Direction),vjust=-0.3)
+```
+
+Problem 2 :
+Month graph:
+
+```{r}
+#Problem 2
+df21 <- market
+dftime <- df21 %>%
+  dplyr::select(FMID,Season1Date)
+dftime$Season1Date <- unlist(str_split_fixed(dftime$Season1Date," to ", n=3))
+library(lubridate)
+dftime$Season1Date <- dftime$Season1Date[,1]
+dftime$Season1Date <- mdy(dftime$Season1Date) 
+dftime$Season1Date <- month(dftime$Season1Date,label=TRUE, abbr = FALSE)
+dftime <- na.omit(dftime)
+dftime1 <- df21 %>%
+  dplyr ::select(FMID,Season1Date)
+dftime1$Season1Date <- unlist(str_split_fixed(dftime1$Season1Date," to ",n = 3))
+dftime1$Season1Date <- dftime1$Season1Date[,1]
+dftime1 <- dftime1 %>%
+  filter(dftime1$Season1Date %in% c("January","February","March","April","May","June","July","August","September","October","November","December"))
+dftimefinal <- rbind(dftime,dftime1)
+dftimefinal <- summarise(group_by(dftimefinal,Season1Date), count_month = n())
+library(ggplot2)
+dftimefinal<- summarise(group_by(dftimefinal,Season1Date,count_month))
+ggplot(dftimefinal,aes(x=factor(Season1Date),y = count_month))+geom_bar(stat="identity",fill = "steelblue")+coord_flip()+labs(x="Season 1 Starting Month",y="Number of Farmers market",title = "NUMBER OF FARMERS MARKET STARTING IN EACH MONTH")+geom_text(aes(label = count_month),hjust=-0.3)
+```
+
+Month and Year Bar graph:
+
+```{r}
+df21 <- market
+dftime2 <- df21 %>%
+  dplyr::select(FMID,Season1Date)
+dftime2$Season1Date <- unlist(str_split_fixed(dftime2$Season1Date," to ", n=3))
+dftime2$Season1Date <- dftime2$Season1Date[,1]
+dftime2$Season1Date <- mdy(dftime2$Season1Date)
+dftime2$month <- month(dftime2$Season1Date,label=TRUE,abbr = FALSE)
+dftime2$year <- year(dftime2$Season1Date)
+dftime2 <- na.omit(dftime2)
+dftime2final <- summarise(group_by(dftime2,month,year), count_month = n())
+ggplot(dftime2final, aes(x=factor(month), y = count_month, fill =factor(year)))+geom_bar(stat = "identity")+coord_flip()+labs(x="Season 1 Starting Month", y = "Number of Farmers market", title = "NUMBER OF FARMERS MARKET STARTING IN EACH MONTH", fill = "Year")+ scale_colour_brewer(palette = "Set1")
+```
+
+Year graph:
+
+```{r}
+dftime2final2 <- summarise(group_by(dftime2,year), count_year = n())
+ggplot(dftime2final2,aes(x=factor(year),y = count_year))+geom_bar(stat = "identity", fill = "steelblue")+coord_flip()+labs(x="Season 1 starting year",y="Number of Farmers market",title = "NUMBER OF FARMERS MARKET STARTING IN EACH YEAR")+geom_text(aes(label = count_year),hjust = -0.3)
+```
+
+Heatmap:
+
+```{r}
+ggplot(dftime2final, aes(x=factor(year),y=factor(month),fill= count_month))+geom_tile()+labs(x="Year",y="Month",fill="Market count", title = "HEATMAP OF FARMERS MARKET")
+```
+
+Problem 3:
+Product graph:
+
+```{r}
+###Problem 3
+df31 <- market
+df31[,29:58] <- ifelse(df31[,29:58]=="Y",1,0)
+df32 <- df31[,29:58]
+sum <- colSums(df32)
+dfproduct <- data.frame("products"= colnames(df32))
+dfproduct$sum <- sum       
+ggplot(dfproduct,aes(x=reorder(products,sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+coord_flip()+labs(x="Product Names",y="No of Farmers market",title="COUNT VARIATION OF EACH PRODUCT")+geom_text(aes(label=sum),hjust=-0.3)
+```
+
+
+Problem 4 :
+Payment graph
+
+```{r}
+#Problem 4
+df41 <- market
+df41[,24:28] <- ifelse(df41[,24:28]=="Y",1,0)
+df42 <- df41[,24:28]
+sum_payment <- colSums(df42)
+dfpayment <- data.frame("payments"= colnames(df42))
+dfpayment$sum <- sum_payment
+ggplot(dfpayment,aes(x=reorder(payments,-sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+labs(x="Payment Methods",y="No of Farmers Market",title="COUNT VARIATION OF EACH PAYMENT METHODS")+geom_text(aes(label =sum),vjust=-0.3)
+```
+
+Pie chart
+
+```{r}
+percentage <- round(dfpayment$sum/sum(dfpayment$sum)*100,2)
+dfpayment$payments <- paste(dfpayment$payments,percentage)
+dfpayment$payments <-paste(dfpayment$payments,"%",sep="")
+library(viridis)
+pie(dfpayment$sum,labels = dfpayment$payments,col=plasma(length(dfpayment$payments)),main = "COUNT VARIATION OF EACH PAYMENTS IN PERCENTAGE")
+```
+
+Problem 5 :
+Region and payments graph:
+
+```{r}
+#Problem 5
+p1df <- dfnortheast
+p1df[,24:28] <- ifelse(p1df[,24:28]=="Y",1,0)
+p1dfdf <- p1df[,24:28]
+sum_payment <- colSums(p1dfdf)
+p1payment <- data.frame("payments"= colnames(p1dfdf))
+p1payment$sum <- sum_payment
+p1 <-ggplot(p1payment,aes(x=reorder(payments,-sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+labs(x="Payment Methods",y="No of Farmers Market",title="NORTHEAST")+geom_text(aes(label =sum),vjust=-0.3)
+
+p2df <- dfmidwest
+p2df[,24:28] <- ifelse(p2df[,24:28]=="Y",1,0)
+p2dfdf <- p2df[,24:28]
+sum_payment <- colSums(p2dfdf)
+p2payment <- data.frame("payments"= colnames(p2dfdf))
+p2payment$sum <- sum_payment
+p2 <-ggplot(p2payment,aes(x=reorder(payments,-sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+labs(x="Payment Methods",y="No of Farmers Market",title="MIDWEST")+geom_text(aes(label =sum),vjust=-0.3)
+
+p3df <- dfsouth
+p3df[,24:28] <- ifelse(p3df[,24:28]=="Y",1,0)
+p3dfdf <- p3df[,24:28]
+sum_payment <- colSums(p3dfdf)
+p3payment <- data.frame("payments"= colnames(p3dfdf))
+p3payment$sum <- sum_payment
+p3 <-ggplot(p3payment,aes(x=reorder(payments,-sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+labs(x="Payment Methods",y="No of Farmers Market",title="SOUTH")+geom_text(aes(label =sum),vjust=-0.3)
+
+p4df <- dfwest
+p4df[,24:28] <- ifelse(p4df[,24:28]=="Y",1,0)
+p4dfdf <- p4df[,24:28]
+sum_payment <- colSums(p4dfdf)
+p4payment <- data.frame("payments"= colnames(p4dfdf))
+p4payment$sum <- sum_payment
+p4 <-ggplot(p4payment,aes(x=reorder(payments,-sum),y = sum))+geom_bar(stat = "identity", fill="steelblue")+labs(x="Payment Methods",y="No of Farmers Market",title="WEST")+geom_text(aes(label =sum),vjust=-0.3)
+
+library(gridExtra)
+grid.arrange(p1,p2,p3,p4, ncol=2,nrow=2)
+```
